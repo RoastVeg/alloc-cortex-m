@@ -24,10 +24,9 @@ version = "0.4.2"
 [dependencies]
 cortex-m = "0.7.2"
 
-[dependencies.linked_list_allocator]
+[dependencies.buddy_system_allocator]
 default-features = false
-version = "0.8.11"
-features = ["const_mut_refs"]
+version = "0.8.0"
 
 [dev-dependencies]
 cortex-m-rt = "0.6.12"

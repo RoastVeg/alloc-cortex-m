@@ -13,10 +13,10 @@ use core::cell::RefCell;
 use core::ptr::{self, NonNull};
 
 use cortex_m::interrupt::Mutex;
-use linked_list_allocator::Heap;
+use buddy_system_allocator::Heap;
 
 pub struct CortexMHeap {
-    heap: Mutex<RefCell<Heap>>,
+    heap: Mutex<RefCell<Heap<32>>>,
 }
 
 impl CortexMHeap {
@@ -61,12 +61,15 @@ impl CortexMHeap {
 
     /// Returns an estimate of the amount of bytes in use.
     pub fn used(&self) -> usize {
-        cortex_m::interrupt::free(|cs| self.heap.borrow(cs).borrow_mut().used())
+        cortex_m::interrupt::free(|cs| self.heap.borrow(cs).borrow_mut().stats_alloc_actual())
     }
 
     /// Returns an estimate of the amount of bytes available.
     pub fn free(&self) -> usize {
-        cortex_m::interrupt::free(|cs| self.heap.borrow(cs).borrow_mut().free())
+        cortex_m::interrupt::free(|cs| {
+	    let heap = self.heap.borrow(cs).borrow_mut();
+	    heap.stats_total_bytes() - heap.stats_alloc_actual()
+	})
     }
 }
 
@@ -76,7 +79,7 @@ unsafe impl GlobalAlloc for CortexMHeap {
             self.heap
                 .borrow(cs)
                 .borrow_mut()
-                .allocate_first_fit(layout)
+                .alloc(layout)
                 .ok()
                 .map_or(ptr::null_mut(), |allocation| allocation.as_ptr())
         })
@@ -87,7 +90,7 @@ unsafe impl GlobalAlloc for CortexMHeap {
             self.heap
                 .borrow(cs)
                 .borrow_mut()
-                .deallocate(NonNull::new_unchecked(ptr), layout)
+                .dealloc(NonNull::new_unchecked(ptr), layout)
         });
     }
 }
